@@ -1,6 +1,7 @@
 /**
  *  Enhanced Mobile Presence
- *    Adds override capability to presence
+ *    Builds off SmartThings mobile presence and adds override capability which can be invoked manually or by 3rd
+ *    party endpoints
  *
  *  Copyright 2016 tybo27
  *
@@ -60,7 +61,14 @@ def parse(String description) {
 		isStateChange: isStateChange,
 		displayed: displayed(description, isStateChange)
 	]
-	log.debug "Parse returned $results.descriptionText"
+	log.debug "Parse returned:"
+    log.debug " name: $results.name"
+    log.debug " value: $results.value"
+    log.debug " linkText: $results.linkText"
+    log.debug " descriptionText: $results.descriptionText"
+    log.debug " handlerName: $results.handlerName"
+    log.debug " isStateChange: $results.isStateChange"
+    log.debug " displayed: $results.displayed"
 	return results
 
 }
@@ -74,14 +82,26 @@ private String parseName(String description) {
 
 def on () {
 	sendEvent(name: "switch", value: "on")
-    def old = device.latestValue("presence")
-    
-    // do nothing if already in that state
-	if ( old != "present") {
-    	log.debug "Overriding $device.displayName to present"
-	    sendEvent(displayed: true,  isStateChange: true, name: "presence", value: "present", descriptionText: "$device.displayName is $present")
-	} 
 
+    def nameVar = "presence"
+    def valueVar = "present"
+	def linkTextVar = getLinkText(device)
+	def descriptionTextVar = parseDescriptionText(linkTextVar, valueVar, '')
+	def handlerNameVar = getState(valueVar)
+	def isStateChange = isStateChange(device, nameVar, valueVar)
+    
+    log.debug "Overriding $device.displayName to present"
+    sendEvent(translatable: true, name: nameVar, value: valueVar, unit: null, linkText: linkTextVar, descriptionText: descriptionTextVar, handlerName: handlerNameVar, isStateChange: isStateChange, displayed: displayed('', isStateChange))
+
+    log.debug "Overried returned:"
+    log.debug " name: $nameVar"
+    log.debug " value: $valueVar"
+    log.debug " linkText: $linkTextVar"
+    log.debug " descriptionText: $descriptionTextVar"
+    log.debug " handlerName: $handlerNameVar"
+    log.debug " isStateChange: $isStateChange"
+    log.debug " displayed: ${displayed('', isStateChange)}"
+    
 }
 
 def off () {
@@ -93,9 +113,11 @@ private String parseValue(String description) {
 		case "presence: 1": return "present"
 		case "presence: 0":
         	// Override presence if switch is on
-        	switch (device.switch) {
+            log.debug "$device.displayName is not present and override state is ${device.currentValue("switch")}"
+        	switch (device.currentValue("switch")) {
             	case "on": return "present"
                 case "off": return  "not present"
+                default: return "not present"
             }
 		default: return description
 	}
