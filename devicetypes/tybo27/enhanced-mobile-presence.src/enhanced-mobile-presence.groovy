@@ -43,36 +43,43 @@ metadata {
 }
 
 def parse(String description) {
-	def name = parseName(description)
-	def value = parseValue(description)
-	def linkText = getLinkText(device)
-	def descriptionText = parseDescriptionText(linkText, value, description)
-	def handlerName = getState(value)
-	def isStateChange = isStateChange(device, name, value)
 
-	def results = [
-    	translatable: true,
-		name: name,
-		value: value,
-		unit: null,
-		linkText: linkText,
-		descriptionText: descriptionText,
-		handlerName: handlerName,
-		isStateChange: isStateChange,
-		displayed: displayed(description, isStateChange)
-	]
-    state.descriptionVar = description
-    state.valueVar = results.value
-	log.debug "Parse returned:"
-    log.debug " name: $name"
-    log.debug " value: $value"
-    log.debug " linkText: $linkText"
-    log.debug " descriptionText: $descriptionText"
-    log.debug " handlerName: $handlerName"
-    log.debug " isStateChange: $isStateChange"
-    log.debug " displayed: $displayed"
-	return results
+	// Store latest description in case of override
+	state.descriptionVar = description
+    // If override swtich is OFF, parse description and generate event
+    if (device.currentValue("switch")=="off") {
+        log.debug "Overide switch is OFF, parsing desciption: $description, generating event:"
+        
+		def name = parseName(description)
+		def value = parseValue(description)
+		def linkText = getLinkText(device)
+        def descriptionText = parseDescriptionText(linkText, value, description)
+        def handlerName = getState(value)
+        def isStateChange = isStateChange(device, name, value)
 
+        def results = [
+            translatable: true,
+            name: name,
+            value: value,
+            unit: null,
+            linkText: linkText,
+            descriptionText: descriptionText,
+            handlerName: handlerName,
+            isStateChange: isStateChange,
+            displayed: displayed(description, isStateChange)
+        ]
+    
+        log.debug " name: $name"
+        log.debug " value: $value"
+        log.debug " linkText: $linkText"
+        log.debug " descriptionText: $descriptionText"
+        log.debug " handlerName: $handlerName"
+        log.debug " isStateChange: $isStateChange"
+        log.debug " displayed: $displayed"
+        return results
+    } else {
+        log.debug "Overide switch is ON, no event generated. Stored description: $description"
+    }
 }
 
 private String parseName(String description) {
@@ -84,16 +91,19 @@ private String parseName(String description) {
 
 def on () {
 	sendEvent(name: "switch", value: "on")
-	def descriptionVar = "presence: 1"
-    def nameVar = "presence"
-    def valueVar = "present"
-	def linkTextVar = getLinkText(device)
-	def descriptionTextVar = parseDescriptionText(linkTextVar, valueVar, '')
-	def handlerNameVar = getState(valueVar)
-	def isStateChange = isStateChange(device, nameVar, valueVar)
     
-    log.debug "Overriding $device.displayName to present"
-    log.debug "Switch ON: Overide returned:"
+    // Overide state to present
+	def descriptionVar = "presence: 1"
+    
+    // Parse description
+    def nameVar = parseName(descriptionVar)
+    def valueVar = parseValue(descriptionVar)
+    def linkTextVar = getLinkText(device)
+    def descriptionTextVar = parseDescriptionText(linkTextVar, valueVar, '')
+    def handlerNameVar = getState(valueVar)
+    def isStateChange = isStateChange(device, nameVar, valueVar)
+    
+    log.debug "Switch ON: Overriding $device.displayName to present:"
     log.debug " name: $nameVar"
     log.debug " value: $valueVar"
     log.debug " linkText: $linkTextVar"
@@ -101,33 +111,32 @@ def on () {
     log.debug " handlerName: $handlerNameVar"
     log.debug " isStateChange: $isStateChange"
     log.debug " displayed: ${displayed(descriptionVar, isStateChange)}"
+    
     sendEvent(translatable: true, name: nameVar, value: valueVar, unit: null, linkText: linkTextVar, descriptionText: descriptionTextVar, handlerName: handlerNameVar, isStateChange: isStateChange, displayed: displayed(descriptionVar, isStateChange))
     
 }
 
 def off () {
-	// Define defaults
-    def descriptionVar = "presence: 0"
-    def nameVar = "presence"
-    def valueVar = "not present"
-    
+
 	sendEvent(name: "switch", value: "off")
-    // Override if previous state saved
-    if (state.valueVar) {
-    	log.debug("Switch OFF, state.results returned:")
+    
+	// Define default description and overide if previous saved, FUTURE: Consider no action if state.results doesn't exist?
+    def descriptionVar = "presence: 0"
+    if (state.descriptionVar) {
         descriptionVar = state.descriptionVar
-    	valueVar = state.valueVar
+        log.debug("Switch OFF, returning $device.displayName to last parsed description: $descriptionVar:")
     } else {
-    	log.debug("Switch OFF, state.results does not exist, default returned:")
-        // Consider no action if state.results doesn't exist?
-        
+    	log.debug("Switch OFF, no previously saved state, setting $device.displayName to default $descriptionVar:")
     }
+    
+    // Parse Description
+    def nameVar = parseName(descriptionVar)
+    def valueVar = parseValue(descriptionVar)
     def linkTextVar = getLinkText(device)
     def descriptionTextVar = parseDescriptionText(linkTextVar, valueVar, '')
     def handlerNameVar = getState(valueVar)
     def isStateChange = isStateChange(device, nameVar, valueVar)
     
-        
     log.debug " name: $nameVar"
     log.debug " value: $valueVar"
     log.debug " linkText: $linkTextVar"
@@ -142,14 +151,7 @@ def off () {
 private String parseValue(String description) {
 	switch(description) {
 		case "presence: 1": return "present"
-		case "presence: 0":
-        	// Override presence if switch is on
-            log.debug "$device.displayName is not present and override state is ${device.currentValue("switch")}"
-        	switch (device.currentValue("switch")) {
-            	case "on": return "present"
-                case "off": return  "not present"
-                default: return "not present"
-            }
+		case "presence: 0": return "not present"
 		default: return description
 	}
 }
