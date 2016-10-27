@@ -35,7 +35,7 @@ metadata {
 		}
         standardTile("override", "device.switch", width: 2, height: 2) {
 			state("on", label: 'override', action: "switch.off", icon:"st.Home.home2", backgroundColor:"#53a7c0", nextState: "off")
-			state("off", label: 'off', action: "switch.on", icon:"st.Home.home2", backgroundColor:"#ffffff", nextState: "on")
+			state("off", label: 'off', action: "switch.on", icon:"st.Home.home2", backgroundColor:"#ebeef2", nextState: "on")
 		}
 		main "presence"
 		details (["presence", "override"])
@@ -61,14 +61,16 @@ def parse(String description) {
 		isStateChange: isStateChange,
 		displayed: displayed(description, isStateChange)
 	]
+    state.descriptionVar = description
+    state.valueVar = results.value
 	log.debug "Parse returned:"
-    log.debug " name: $results.name"
-    log.debug " value: $results.value"
-    log.debug " linkText: $results.linkText"
-    log.debug " descriptionText: $results.descriptionText"
-    log.debug " handlerName: $results.handlerName"
-    log.debug " isStateChange: $results.isStateChange"
-    log.debug " displayed: $results.displayed"
+    log.debug " name: $name"
+    log.debug " value: $value"
+    log.debug " linkText: $linkText"
+    log.debug " descriptionText: $descriptionText"
+    log.debug " handlerName: $handlerName"
+    log.debug " isStateChange: $isStateChange"
+    log.debug " displayed: $displayed"
 	return results
 
 }
@@ -82,7 +84,7 @@ private String parseName(String description) {
 
 def on () {
 	sendEvent(name: "switch", value: "on")
-
+	def descriptionVar = "presence: 1"
     def nameVar = "presence"
     def valueVar = "present"
 	def linkTextVar = getLinkText(device)
@@ -91,21 +93,50 @@ def on () {
 	def isStateChange = isStateChange(device, nameVar, valueVar)
     
     log.debug "Overriding $device.displayName to present"
-    sendEvent(translatable: true, name: nameVar, value: valueVar, unit: null, linkText: linkTextVar, descriptionText: descriptionTextVar, handlerName: handlerNameVar, isStateChange: isStateChange, displayed: displayed('', isStateChange))
-
-    log.debug "Overried returned:"
+    log.debug "Switch ON: Overide returned:"
     log.debug " name: $nameVar"
     log.debug " value: $valueVar"
     log.debug " linkText: $linkTextVar"
     log.debug " descriptionText: $descriptionTextVar"
     log.debug " handlerName: $handlerNameVar"
     log.debug " isStateChange: $isStateChange"
-    log.debug " displayed: ${displayed('', isStateChange)}"
+    log.debug " displayed: ${displayed(descriptionVar, isStateChange)}"
+    sendEvent(translatable: true, name: nameVar, value: valueVar, unit: null, linkText: linkTextVar, descriptionText: descriptionTextVar, handlerName: handlerNameVar, isStateChange: isStateChange, displayed: displayed(descriptionVar, isStateChange))
     
 }
 
 def off () {
+	// Define defaults
+    def descriptionVar = "presence: 0"
+    def nameVar = "presence"
+    def valueVar = "not present"
+    
 	sendEvent(name: "switch", value: "off")
+    // Override if previous state saved
+    if (state.valueVar) {
+    	log.debug("Switch OFF, state.results returned:")
+        descriptionVar = state.descriptionVar
+    	valueVar = state.valueVar
+    } else {
+    	log.debug("Switch OFF, state.results does not exist, default returned:")
+        // Consider no action if state.results doesn't exist?
+        
+    }
+    def linkTextVar = getLinkText(device)
+    def descriptionTextVar = parseDescriptionText(linkTextVar, valueVar, '')
+    def handlerNameVar = getState(valueVar)
+    def isStateChange = isStateChange(device, nameVar, valueVar)
+    
+        
+    log.debug " name: $nameVar"
+    log.debug " value: $valueVar"
+    log.debug " linkText: $linkTextVar"
+    log.debug " descriptionText: $descriptionTextVar"
+    log.debug " handlerName: $handlerNameVar"
+    log.debug " isStateChange: $isStateChange"
+    log.debug " displayed: ${displayed(descriptionVar, isStateChange)}"
+    sendEvent(translatable: true, name: nameVar, value: valueVar, unit: null, linkText: linkTextVar, descriptionText: descriptionTextVar, handlerName: handlerNameVar, isStateChange: isStateChange, displayed: displayed(descriptionVar, isStateChange))
+	
 }
 
 private String parseValue(String description) {
