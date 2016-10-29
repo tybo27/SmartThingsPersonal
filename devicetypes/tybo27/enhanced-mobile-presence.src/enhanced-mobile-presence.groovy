@@ -21,6 +21,8 @@ metadata {
 		capability "Presence Sensor"
 		capability "Sensor"
         capability "Switch"
+        
+        attribute "mobilePresence", "enum", ["present", "not present"]
 	}
 
 	simulator {
@@ -37,8 +39,13 @@ metadata {
 			state("on", label: 'override', action: "switch.off", icon:"st.Home.home2", backgroundColor:"#53a7c0", nextState: "off")
 			state("off", label: 'off', action: "switch.on", icon:"st.Home.home2", backgroundColor:"#ebeef2", nextState: "on")
 		}
+        valueTile("mobilePresence", "device.mobilePresence", width: 1, height: 1) {
+			state("present", label: 'present', icon:"st.Office.office9", backgroundColor:"#53a7c0")
+			state("not present", label: 'not present', icon:"st.Office.office9", backgroundColor:"#ebeef2")
+            state("default", label: 'not set', icon:"st.Office.office9", backgroundColor:"#ffffff")
+		}
 		main "presence"
-		details (["presence", "override"])
+		details (["presence", "override", "mobilePresence"])
 	}
 }
 
@@ -46,18 +53,33 @@ def parse(String description) {
 
 	// Store latest description in case of override
 	state.descriptionVar = description
-    // If override swtich is OFF, parse description and generate event
-    if (device.currentValue("switch")=="off") {
+    
+    // Parse description
+    def value = parseValue(description)
+    def name = parseName(description)
+    def linkText = getLinkText(device)
+    def descriptionText = parseDescriptionText(linkText, value, description)
+    def handlerName = getState(value)
+    def isStateChangePresence = isStateChange(device, name, value)
+  	def isStateChangeMobile = isStateChange(device, "mobilePresence", value)
+    
+    //Generate mobile presence event to track input
+    def mobileEvent = createEvent(
+        translatable: true,
+        name: "mobilePresence",
+        value: value,
+        unit: null,
+        linkText: "Mobile presence",
+        descriptionText: "Mobile component: $descriptionText",
+        isStateChange: isStateChangeMobile,
+        displayed: displayed(description, isStateChangeMobile)
+    )
+    
+    // If override switch is OFF, or it is asserting presence parse description and generate presence event
+    if (device.currentValue("switch")=="off" || value=="present") {
         log.debug "Overide switch is OFF, parsing desciption: $description, generating event:"
-        
-		def name = parseName(description)
-		def value = parseValue(description)
-		def linkText = getLinkText(device)
-        def descriptionText = parseDescriptionText(linkText, value, description)
-        def handlerName = getState(value)
-        def isStateChange = isStateChange(device, name, value)
-
-        def results = [
+    
+        def presenceEvent = [
             translatable: true,
             name: name,
             value: value,
@@ -65,20 +87,22 @@ def parse(String description) {
             linkText: linkText,
             descriptionText: descriptionText,
             handlerName: handlerName,
-            isStateChange: isStateChange,
-            displayed: displayed(description, isStateChange)
-        ]
-    
+            isStateChange: isStateChangePresence,
+            displayed: displayed(description, isStateChangePresence)
+ 			]
+    	
         log.debug " name: $name"
         log.debug " value: $value"
         log.debug " linkText: $linkText"
         log.debug " descriptionText: $descriptionText"
         log.debug " handlerName: $handlerName"
-        log.debug " isStateChange: $isStateChange"
+        log.debug " isStateChange: $isStateChangePresence"
         log.debug " displayed: $displayed"
-        return results
+        return [presenceEvent, mobileEvent]
+        
     } else {
         log.debug "Overide switch is ON, no event generated. Stored description: $description"
+        return mobileEvent
     }
 }
 
@@ -90,7 +114,6 @@ private String parseName(String description) {
 }
 
 def on () {
-	sendEvent(name: "switch", value: "on")
     
     // Overide state to present
 	def descriptionVar = "presence: 1"
@@ -114,11 +137,10 @@ def on () {
     
     sendEvent(translatable: true, name: nameVar, value: valueVar, unit: null, linkText: linkTextVar, descriptionText: descriptionTextVar, handlerName: handlerNameVar, isStateChange: isStateChange, displayed: displayed(descriptionVar, isStateChange))
     
+    sendEvent(name: "switch", value: "on", unit: null, linkText: "Override Switch", descriptionText: "Override Switch is on")
 }
 
 def off () {
-
-	sendEvent(name: "switch", value: "off")
     
 	// Define default description and overide if previous saved, FUTURE: Consider no action if state.results doesn't exist?
     def descriptionVar = "presence: 0"
@@ -146,6 +168,7 @@ def off () {
     log.debug " displayed: ${displayed(descriptionVar, isStateChange)}"
     sendEvent(translatable: true, name: nameVar, value: valueVar, unit: null, linkText: linkTextVar, descriptionText: descriptionTextVar, handlerName: handlerNameVar, isStateChange: isStateChange, displayed: displayed(descriptionVar, isStateChange))
 	
+    sendEvent(name: "switch", value: "off", unit: null, linkText: "Override Switch", descriptionText: "Override Switch is off")
 }
 
 private String parseValue(String description) {
