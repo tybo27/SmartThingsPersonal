@@ -33,7 +33,7 @@ metadata {
 	}
 
 	tiles {
-		standardTile("button", "device.switch", width: 2, height: 2, canChangeIcon: false) {
+		standardTile("button", "device.switch", width: 2, height: 2, canChangeIcon: true) {
 			state "off", label: 'Off', action: "switch.on", icon: "st.Home.home30", backgroundColor: "#ffffff", nextState: "on"
 			state "on", label: 'On', action: "switch.off", icon: "st.Home.home30", backgroundColor: "#79b821", nextState: "off"
 		}
@@ -41,7 +41,7 @@ metadata {
 			state "default", label:'', action:"refresh.refresh", icon:"st.secondary.refresh"
 		}   
         valueTile("counter", "device.count", width: 1, height: 1) { 
-        	state "val", label:'${currentValue}', action:reset,
+        	state "val", label:'${currentValue}', action:reset, icon: "st.Health & Wellness.health7"
             backgroundColors:[ 
             	[value: 0, color: "#ffffff"],
                 [value: 1, color: "#153591"], 

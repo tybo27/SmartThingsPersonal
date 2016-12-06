@@ -1,13 +1,22 @@
 /**
- *  Updated eGauge Energy Monitoring System
- Based on starters from Ronald Gouldner and carloss66
+ *  eGauge Monitor using HubAction for API calls
+ * IMPORTANT - eGauge device network ID must be the LAN IP:port in hex!!!!
+ *
+ *  Copyright 2016 tybo27
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ *  in compliance with the License. You may obtain a copy of the License at:
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
+ *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
+ *  for the specific language governing permissions and limitations under the License.
+ *
  */
  
 preferences {
-
-	input("uri", "text", title: "eGauge Monitor URL")
-   // input("usageThresh", "number", title: "Usage Alert Threshold")
-    input("usageWindowThresh", "number", title: "Time in minutes for usage alert calculations")
+    input("usageWindowThresh", "number", title: "Time in minutes for usage alert calculations, reported as temperature to allow dashboard access")
 }
 
 metadata {
@@ -27,11 +36,7 @@ metadata {
     attribute "frequency", "number"
     attribute "voltage1", "number"
     attribute "voltage2", "number"
-    
-    attribute "energy_today", "STRING"
-        
-    fingerprint deviceId: "CASeGauge"
-	}
+}
 
 	simulator {
 		// TODO: define status and reply messages here
@@ -39,8 +44,33 @@ metadata {
 
 	tiles {
     		//st.Home.home1
-            valueTile("net", "device.power") {
-   	         state("power", label: '${currentValue}kW\nNet', unit:"kW", action:refresh, backgroundColors: [
+            valueTile("netEnergy", "device.netEnergyToday") {
+   	         state("netEnergyToday", label: '${currentValue}kWh\nNet', unit:"kWh", icon: "st.Home.home1", action:refresh, backgroundColors: [
+                    [value: 1, color: "#FF0000"],
+                    [value: -1, color: "#32CD32"],
+    	            ]
+                )
+        	}
+            //st.Weather.weather14
+            valueTile("solarEnergy", "device.solarEnergyToday") {
+   	         state("solarEnergyToday", label: '${currentValue}kWh\nSolar', unit:"kWh", icon: "st.Weather.weather14", backgroundColors: [
+                    [value: 1, color: "#32CD32"],
+                    [value: 0, color: "#d3d3d3"],
+    	            ]
+                )
+        	}    
+            //st.Appliances.appliances17
+            valueTile("gridEnergy", "device.gridEnergyToday") {
+   	         state("gridEnergyToday", label: '${currentValue}kWh\nGrid', unit:"kWh", icon: "st.Appliances.appliances17", backgroundColors: [
+                    [value: 0, color: "#d3d3d3"],
+                    [value: 1, color: "#FF0000"],
+    	            ]
+                )
+        	}  
+            
+            //st.Home.home1
+            valueTile("net", "device.power", canChangeIcon: true) {
+   	         state("power", label: '${currentValue}kW\nNet', unit:"kW", icon: "st.Home.home1", action:refresh, backgroundColors: [
                     [value: 1, color: "#FF0000"],
                     [value: -1, color: "#32CD32"],
     	            ]
@@ -48,7 +78,7 @@ metadata {
         	}
             //st.Weather.weather14
             valueTile("solar", "device.solarPower") {
-   	         state("solarPower", label: '${currentValue}kW\nSolar', unit:"kW", backgroundColors: [
+   	         state("solarPower", label: '${currentValue}kW\nSolar', unit:"kW", icon: "st.Weather.weather14", backgroundColors: [
                     [value: 1, color: "#32CD32"],
                     [value: 0, color: "#d3d3d3"],
     	            ]
@@ -56,7 +86,7 @@ metadata {
         	}    
             //st.Appliances.appliances17
             valueTile("grid", "device.gridPower") {
-   	         state("gridPower", label: '${currentValue}kW\nGrid', unit:"kW", backgroundColors: [
+   	         state("gridPower", label: '${currentValue}kW\nGrid', unit:"kW", icon: "st.Appliances.appliances17", backgroundColors: [
                     [value: 0, color: "#d3d3d3"],
                     [value: 1, color: "#FF0000"],
     	            ]
@@ -90,13 +120,11 @@ metadata {
                 )
         	}  
             standardTile("refresh", "device.energy_today", inactiveLabel: false, decoration: "flat") {
-                state "default", action:"polling.poll", icon:"st.secondary.refresh"
+                state "default", action:"refresh()", icon:"st.secondary.refresh"
             }
 
-        
         main ("net")
-        details(["net", "solar", "grid","frequency","voltage1","voltage2", "refresh"])
-
+        details(["netEnergy", "solarEnergy", "gridEnergy", "net", "solar", "grid","frequency","voltage1","voltage2", "refresh"])
 	}
 }
 
@@ -125,16 +153,16 @@ def parse(String description) {
 		switch (rootNode.name()){
 			case 'group':
                 def groupData = [:]	
-				def numColumns = rootNode.data[0].@columns
+				groupData.put("timeStamp", [:])
+                def numColumns = rootNode.data[0].@columns
                 def epoch = rootNode.data[0].@epoch
 				def cumIdx = 0
-                groupData.put("timeStamp", [:])
                 def cnameMap = [:]
+                
                 def netToday
                 def gridToday
                 def solarToday
                 def temp
-    
                 
                 rootNode.data.eachWithIndex { data, dIdx ->
 					
@@ -330,153 +358,6 @@ def removeBodyHeaders (body) {
 	return body
 }
 
-def getDailyValues() {  
-      log.debug "Executing 'getDailyValues'"
-  
-    // Calculate Unix Timestamp
-      def UTC = Math.round(now()/1000)  //.round(0)
-      def midnight = (timeToday("00:00", location.timeZone).time/1000)//.round(0)
-      def offset = (UTC-midnight)//.round(0)
-      //log.debug "In UTC: Current time=$UTC and midnight=$midnight, offset=$offset"
-  
-      //def curTimeDate = new Date()
-      //def midnight = curDate.time/1000
-      //new Date().format("yyyy-MM-dd")
-      //def df = new java.text.SimpleDateFormat("MM/dd/yyyy")
-      //df.setTimeZone(location.timeZone)
-      //def date = df.format(new Date())
-      //log.debug "Method 1 Date is $date"
-      //def cmd = "http://egauge20410.egaug.es/cgi-bin/egauge-show"
-      def cmd = "${settings.uri}/cgi-bin/egauge-show"
-      def arg = "n=1"
-
-      def postParams = [
-      		"uri": settings.uri,
-            "path": "/cgi-bin/egauge-show",
-            //"query": ["n": 1]
-            ]
-
-      //def cmd = [uri: "${settings.uri}/cgi-bin/egauge-show?n=1&f=1479801600", headers: "!DOCTYPE"]
-      //log.debug "Sending request cmd: [ ${cmd} ]"
-	  httpPost(postParams) {resp ->
-      //httpPost(cmd,arg) {resp ->
-      	log.debug "httpGet sent, resp=$resp"
-        //log.debug "response contentType: ${resp.contentType}"
-            if (resp.data) {
-                log.debug "${resp.data}"
-                def gpathString = resp.data.text()
-                def netEnergy = 0
-                def solarEnergy = 0
-                def gridEnergy = 0
-
-                def timeStamp = resp.data.data.@time_stamp
-                def timeUTC = Integer.decode(timeStamp)
-                def timeDelta = resp.data.data.@time_delta
-                def columns =  resp.data.data.@columns
-                log.debug "timeStamp=$timeStamp, timeUTC=$timeUTC, timeDelta=$timeDelta, columns=$columns"
-
-                resp.data.data.cname.eachwithIndex {  it, i ->
-                    log.debug it.name() + ":"+ it.@t + ":" + it.text() + ": i=" i
-                    log.debug "Data1=${resp.data.data.r[0]}, data2=${resp.data.data.r[1]}"
-                    switch (it.text()) {
-                        case 'grid':
-                            gridEnergy = resp.data.data.r[0].c[i]-resp.data.data.r[1].c[i]
-                            break
-                        case 'solar':
-                            solarEnergy = resp.data.data.r[0].c[i]-resp.data.data.r[1].c[i]
-                            break
-                    }
-                }
-                log.debug "gridEnergy=${gridEnergy}"
-                log.debug "solarEnergy=${solarEnergy}"
-
-                netEnergy = (gridEnergy - solarEnergy).round(3)
-                log.debug "netEnergy=${netEnergy}"
-
-                delayBetween([sendEvent(name: 'netEnergy', value: (netEnergy))
-                              ,sendEvent(name: 'gridEnergy', value: (gridEnergy))
-                              ,sendEvent(name: 'solarEnergy', value: (solarEnergy))
-                             ])				
-        	}
-            
-            if(resp.status == 200) {
-                log.debug "poll results returned"
-            } else {
-                log.error "polling children & got http status ${resp.status}"
-            }
-      }
-}
-
-def getInstantValues() {  
-      log.debug "Executing 'getInstantValues'"
-
-      def cmd = "${settings.uri}/cgi-bin/egauge?noteam";
-      log.debug "Sending request cmd[${cmd}]"
-
-      httpGet(cmd) {resp ->
-            if (resp.data) {
-                log.debug "${resp.data}"
-                def gpathString = resp.data.text()
-                def currentNetPower = 0
-                def currentSolarPower = 0
-                def currentGridPower = 0
-                
-                def currentFreq = 0
-                def currentV1 = 0
-                def currentV2 = 0
-
-                resp.data.meter.each { 
-                    log.debug it.name() + ":"+ it.@title + ":" + it.text()
-                    if (it.name().equals("meter") && it.@title.equals("Grid")) {
-                        log.debug "Found Grid Power"
-                        currentGridPower = (it.power.toFloat()/1000).round(3)
-                    }
-
-                    if (it.name().equals("meter") && it.@title.equals("Solar")) {
-                        log.debug "Found Solar Power"
-                        currentSolarPower = (it.power.toFloat()/1000).round(3)
-                    }
-
-                }
-                log.debug "currentGridPower=${currentGridPower}"
-                log.debug "currentSolarPower=${currentSolarPower}"
-
-                currentNetPower = (currentGridPower - currentSolarPower).round(3)
-                log.debug "currentNetPower=${currentNetPower}"
-
-                currentFreq = resp.data.frequency.toFloat().round(1)
-                log.debug "currentFrequency=$currentFreq"
-
-                resp.data.voltage.each { 
-                    log.debug it.name() + ":"+ it.@ch + ":" + it.text()
-                    if (it.name().equals("voltage") && it.@ch.equals("0")) {
-                        log.debug "Found Ch1 Voltage"
-                        currentV1 = it.text().toFloat().round(1)
-                    }
-
-                    if (it.name().equals("voltage") && it.@ch.equals("1")) {
-                        log.debug "Found Ch2 Voltage"
-                        currentV2 = it.text().toFloat().round(1)
-                    }
-                }   
-                delayBetween([sendEvent(name: 'power', value: (currentNetPower))
-                              ,sendEvent(name: 'gridPower', value: (currentGridPower))
-                              ,sendEvent(name: 'solarPower', value: (currentSolarPower))
-                              ,sendEvent(name: 'frequency', value: (currentFreq))
-                              ,sendEvent(name: 'voltage1', value: (currentV1))
-                              ,sendEvent(name: 'voltage2', value: (currentV2)) 
-                             ])				
-
-            }
-        if(resp.status == 200) {
-            	log.debug "poll results returned"
-        } else {
-            log.error "polling children & got http status ${resp.status}"
-        }
-	}
-}
-
-
 private String convertIPToHex(ipAddress) {
 	return Long.toHexString(converIntToLong(ipAddress));
 }
@@ -488,7 +369,6 @@ private Long converIntToLong(ipAddress) {
     for (int i = 3; i >= 0; i--) {
         result |= (Long.parseLong(parts[3 - i]) << (i * 8));
     }
-
     return result & 0xFFFFFFFF;
 }
 
