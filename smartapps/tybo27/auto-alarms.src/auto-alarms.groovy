@@ -13,6 +13,10 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  */
+ 
+/* ******************************************************************************************
+* Definition: Name, namespace, author, description, category, icon						 	*
+*********************************************************************************************/
 definition(
     name: "Auto Alarms",
     namespace: "tybo27",
@@ -23,7 +27,9 @@ definition(
     iconX2Url: "http://cdn.device-icons.smartthings.com/Health & Wellness/health7-icn@2x.png",
     iconX3Url: "http://cdn.device-icons.smartthings.com/Health & Wellness/health7-icn@2x.png")
 
-
+/* ******************************************************************************************
+* Preferences: Input presences, reset times, and switches/dimmers to turn on			 	*
+*********************************************************************************************/
 preferences {   
     section("Person1") {
 		input "presence1", "capability.presenceSensor", multiple: false, title: "Using whose presence"
@@ -49,19 +55,28 @@ preferences {
     } 
 }
 
+/* ******************************************************************************************
+* Installed: Initialize	smartApp														 	*
+*********************************************************************************************/
 def installed() {
-	log.debug "Installed with settings: ${settings}"
-
+	
+    log.debug "Installed with settings: ${settings}"
 	initialize()
 }
 
+/* ******************************************************************************************
+* Updated: Unsubscribe and reinitialize													 	*
+*********************************************************************************************/
 def updated() {
-	log.debug "Updated with settings: ${settings}"
-
+	
+    log.debug "Updated with settings: ${settings}"
 	unsubscribe()
 	initialize()
 }
 
+/* ******************************************************************************************
+* Initialize: set atomicstates to 0, and subscribe to events							 	*
+*********************************************************************************************/
 def initialize() {
   	atomicState.jointCount = 0  
     atomicState.dimmerLevel = 0
@@ -75,6 +90,9 @@ def initialize() {
     subscribe(alarm2, "resetState.reset", switchResetHandler)
 }
 
+/* ******************************************************************************************
+* switchOnHandler: Turn on switches / ramp dimmers if presence meets correct criteria	 	*
+*********************************************************************************************/
 def switchOnHandler (evt) {
 	log.debug "${evt.displayName} has triggered turned on! ${evt.value}"
     
@@ -147,17 +165,24 @@ def switchOnHandler (evt) {
    	}
 }
 
+/* ******************************************************************************************
+* Reset: Reset all counters to 0														 	*
+*********************************************************************************************/
 def reset () {
-	log.debug "Resetting on scehdule, starting at jointCount = ${atomicState.jointCount}, dimmerLevel = ${atomicState.dimmerLevel}"
+	
+    log.debug "Resetting on scehdule, starting at jointCount = ${atomicState.jointCount}, dimmerLevel = ${atomicState.dimmerLevel}"
 	atomicState.jointCount = 0
     atomicState.dimmerLevel = 0
     alarm1.reset()
     alarm2.reset()
     log.debug "Reset Complete, jointCount = ${atomicState.jointCount}, dimmerLevel = ${atomicState.dimmerLevel}"
+    
 }
 
+/* ******************************************************************************************
+* swtichRestHandler: Reset jointCount and dimmerLever is one of the alarms is reset		 	*
+*********************************************************************************************/
 def switchResetHandler (evt) {
-	// Reset jointCount and dimmerLevel if one of the alarms is reset
    	
     atomicState.jointCount = 0
    	atomicState.dimmerLevel = 0
