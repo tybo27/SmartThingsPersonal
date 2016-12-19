@@ -14,12 +14,17 @@
  *
  */
  
-  
+/* ******************************************************************************************
+* Preferences																			 	*
+*********************************************************************************************/
 preferences {
 
 	input("url", "text", title: "Dell 1610 URL")
 }
 
+/* ******************************************************************************************
+* Metadata: definitions, capabilities, attributes, simulator, tiles						 	*
+*********************************************************************************************/
 metadata {
 	definition (name: "Dell 1610", namespace: "tybo27", author: "tybo27") {
 		capability "Actuator"
@@ -90,7 +95,9 @@ metadata {
 	}
 }
 
-// parse events into attributes
+/* ******************************************************************************************
+* Parse: Parse return from hubAction													 	*
+*********************************************************************************************/
 def parse(String description) {
 	log.debug "Parsing '${description}'"
 	// TODO: handle 'switch' attribute
@@ -118,6 +125,9 @@ def poll() {
     refresh()
 }
 
+/* ******************************************************************************************
+* Refresh: Send hubAction Get to refresh status											 	*
+*********************************************************************************************/
 def refresh() {
 	log.debug "Executing 'refresh'"
 	// TODO: handle 'refresh' command
@@ -145,77 +155,65 @@ def refresh() {
    
 }
 
+/* ******************************************************************************************
+* On: Turn projector power on																*
+*********************************************************************************************/
 def on() {
 	log.debug "Executing 'on'"
     def powerOnResponse = hubActionPowerOn()
-    log.debug "Hub Action Response: ${powerOnRespone}"
+    log.debug "Hub Action Response: ${powerOnResponse}"
 	// TODO: handle 'on' command
+    return powerOnResponse
 }
 
+/* ******************************************************************************************
+* Off: Turn projector power off															 	*
+*********************************************************************************************/
 def off() {
 	log.debug "Executing 'off'"
     def powerOnResponse = hubActionPowerOn()
-    log.debug "Hub Action Response: ${powerOnRespone}"
+    log.debug "Hub Action Response: ${powerOnResponse}"
 	// TODO: handle 'off' command
 }
 
+/* ******************************************************************************************
+* SetVolume: Change volume of the projector												 	*
+*********************************************************************************************/
 def setVolume() {
 	log.debug "Executing 'volumeUp'"
 	// TODO: handle 'volumeUp' command
     //Max of 20
 }
 
+/* ******************************************************************************************
+* BlankScreen: Blank the screen															 	*
+*********************************************************************************************/
 def blankScreen () {
 	log.debug "Blanking Screen"
 
 }
 
+/* ******************************************************************************************
+* hubActionPowerOn: SendHubAction for power on											 	*
+*********************************************************************************************/
 def hubActionPowerOn () {
 	log.debug "Executing HubAction"
     def hubActionHeaders = [
-                'HOST': "192.168.2.216",
+                //'HOST': "192.168.2.216",
                 //HOST: "C0A802D8"//,
-				'Accept': "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-				'Referer': "http://192.168.2.216/tgi/status.tgi",
-				//Cookie: "ATOP=tuA7d",
-				'Connection': "keep-alive"
+				//'Accept': "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+				//'Referer': "http://192.168.2.216/tgi/status.tgi",
+				'Cookie': 'yyHvd',
+				//'Connection': "keep-alive",
             ]
     		hubActionHeaders.put("Content-Type", "application/x-www-form-urlencoded")     
-            hubActionHeaders.put("Accept-Encoding", "gzip, deflate")
-            hubActionHeaders.put("Accept-Language", "en-US,en;q=0.5")
-            hubActionHeaders.put("User-Agent", 'Mozilla/5.0 (Windows NT 10.0; WOW64; rv:48.0) Gecko/20100101 Firefox/48.0')
+            //hubActionHeaders.put("Accept-Encoding", "gzip, deflate")
+            //hubActionHeaders.put("Accept-Language", "en-US,en;q=0.5")
+            //hubActionHeaders.put("User-Agent", 'Mozilla/5.0 (Windows NT 10.0; WOW64; rv:48.0) Gecko/20100101 Firefox/48.0')
             
-    def hubActionPath = "/tgi/status.tgi"
-    //def hubActionBody = "PowerOn=Power+ON+"
-    //def hubActionBody = "Content-Type: application/x-www-form-urlencoded/nContent-Length: 279/n/nPJSTATE=0&DSP_SOURCE=0&ERRORSTA=85&FREEZE0=&HIDE0=170&inp_objname=&inp_objvalue=0&redio_objname=&radio_objvalue=0&PJSTATE2=Standby+&PowerOn=Power+ON+&PwSave=99&ERRORSTA2=&ecoMode=28&PrjMode=99&PrjSRC=0&VideoMode=99&hide=170&Aspect=1&Bright=0&Contrast=0&PrjSRCA=1&Volume=0&Spk=170"
+    def hubActionPath = "http://192.168.2.216/tgi/status.tgi"
     def hubActionBody = "PJSTATE=0&DSP_SOURCE=0&ERRORSTA=85&FREEZE0=&HIDE0=170&inp_objname=&inp_objvalue=0&redio_objname=&radio_objvalue=0&PJSTATE2=Standby+&PowerOn=Power+ON+&PwSave=99&ERRORSTA2=&ecoMode=28&PrjMode=99&PrjSRC=0&VideoMode=99&hide=170&Aspect=1&Bright=0&Contrast=0&PrjSRCA=1&Volume=0&Spk=170"
- 
-    /*def hubActionQuery = [PJSTATE:0,
-            		DSP_SOURCE:0,
-                    ERRORSTA:85,
-                    FREEZE0:"",
-                    HIDE0:170,
-                    inp_objname:"",
-                    inp_objvalue:0,
-                    redio_objname:"",
-                    radio_objvalue:0,
-                    PJSTATE2:"Standby+",
-                    PowerOn:"Power+ON+",
-                    PwSave:99,
-                    ERRORSTA2:"",
-                    ecoMode:28,
-                    PrjMode:99,
-                    PrjSRC:0,
-                    VideoMode:99,
-                    hide:170,
-                    Aspect:1,
-                    Bright:0,
-                    Contrast:0,
-                    PrjSRCA:1,
-                    Volume:0,
-                    Spk:170
-					]*/
-                 
+                
     try {
         def hubActionVar = new physicalgraph.device.HubAction(
             'method': "POST",
@@ -223,22 +221,24 @@ def hubActionPowerOn () {
             'headers': hubActionHeaders,
             'body': hubActionBody
 		)
-        //log.degbug hubActionVar
-        hubActionVar
-	} catch (e) {
+        log.debug hubActionVar
+        //sendHubCommand(hubActionVar)
+        return hubActionVar
+    } catch (e) {
     	log.debug "HubAction Error: $e on hubAction: $hubActionVar"
     }
-    sendHubCommand(hubActionVar)
-    //log.degbug hubActionVar
-    return hubActionVar
 }
 
-
-// gets the address of the hub
+/* ******************************************************************************************
+* getCallBackAddress: Get address of the host											 	*
+*********************************************************************************************/
 private getCallBackAddress() {
     return device.hub.getDataValue("localIP") + ":" + device.hub.getDataValue("localSrvPortTCP")
 }
 
+/* ******************************************************************************************
+* getHostAddress: get address of the device												 	*
+*********************************************************************************************/
 // gets the address of the device
 private getHostAddress() {
     def ip = getDataValue("ip")
@@ -258,14 +258,23 @@ private getHostAddress() {
     return convertHexToIP(ip) + ":" + convertHexToInt(port)
 }
 
+/* ******************************************************************************************
+* convertHexToInt: convert hexideximal to integer										 	*
+*********************************************************************************************/
 private Integer convertHexToInt(hex) {
     return Integer.parseInt(hex,16)
 }
 
+/* ******************************************************************************************
+* convertHexToIP: converts a hex value to IP address									 	*
+*********************************************************************************************/
 private String convertHexToIP(hex) {
     return [convertHexToInt(hex[0..1]),convertHexToInt(hex[2..3]),convertHexToInt(hex[4..5]),convertHexToInt(hex[6..7])].join(".")
 }
 
+/* ******************************************************************************************
+* PowerOn2: Attempt to turn power on by httpPost										 	*
+*********************************************************************************************/
 def powerOn2 () {
 /*
 Parameters:

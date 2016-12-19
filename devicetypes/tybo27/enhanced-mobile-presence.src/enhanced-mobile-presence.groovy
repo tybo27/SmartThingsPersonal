@@ -16,6 +16,9 @@
  *
  */
  
+/* ******************************************************************************************
+* Metadata: definitions, capabilities, attributes, simulator, tiles						 	*
+*********************************************************************************************/
 metadata {
 	definition (name: "Enhanced Mobile Presence", namespace: "tybo27", author: "tybo27") {
 		capability "Presence Sensor"
@@ -39,6 +42,7 @@ metadata {
 			state("on", label: 'override', action: "switch.off", icon:"st.Home.home2", backgroundColor:"#53a7c0", nextState: "off")
 			state("off", label: 'off', action: "switch.on", icon:"st.Home.home2", backgroundColor:"#ebeef2", nextState: "on")
 		}
+        // st.presence.tile.mobile-presence-default
         valueTile("mobilePresence", "device.mobilePresence", width: 1, height: 1) {
 			state("present", label: 'present', icon:"st.Office.office9", backgroundColor:"#53a7c0")
 			state("not present", label: 'not present', icon:"st.Office.office9", backgroundColor:"#ebeef2")
@@ -49,55 +53,63 @@ metadata {
 	}
 }
 
+/* ******************************************************************************************
+* Parse: parse input from mobile presence, handle override state						 	*
+*********************************************************************************************/
 def parse(String description) {
 
+    def switchState = device.currentValue("switch")
+    def presenceState = device.currentValue("presence")
+    def mobilePresenceState = device.currentValue("mobilePresence")
+    log.debug "PARSING '$description', switchState=$switchState, presenceState=$presenceState, mobilePresenceState=$mobilePresenceState"
+    
 	// Store latest description in case of override
 	state.descriptionVar = description
     
     // Parse description
-    def value = parseValue(description)
-    def name = parseName(description)
-    def linkText = getLinkText(device)
-    def descriptionText = parseDescriptionText(linkText, value, description)
-    def handlerName = getState(value)
-    def isStateChangePresence = isStateChange(device, name, value)
-  	def isStateChangeMobile = isStateChange(device, "mobilePresence", value)
+    def valueVar = parseValue(description)
+    def nameVar = parseName(description)
+    def linkTextVar = getLinkText(device)
+    def descriptionTextVar = parseDescriptionText(linkTextVar, valueVar, description)
+    def handlerNameVar = getState(valueVar)
+    def isStateChangePresence = isStateChange(device, nameVar, valueVar)
+    def displayedPresence = displayed(description, isStateChangePresence)
+  	def isStateChangeMobile = isStateChange(device, "mobilePresence", valueVar)
+    def displayedMobile = displayed(description, isStateChangeMobile)
+    
+    log.debug "name=$nameVar, value=$valueVar, handlerName=$handlerNameVar"
+    log.debug "descriptionText=$descriptionTextVar, linkText=$linkTextVar"
+    log.debug "isStateChangePresence=$isStateChangePresence, displayedPresence=$displayedPresence"
+    log.debug "isStateChangeMobile=$isStateChangeMobile, displayedMobile:=$displayedMobile"
     
     //Generate mobile presence event to track input
     def mobileEvent = createEvent(
         translatable: true,
         name: "mobilePresence",
-        value: value,
+        value: valueVar,
         unit: null,
         linkText: "Mobile presence",
-        descriptionText: "Mobile component: $descriptionText",
+        descriptionText: "Mobile component: $descriptionTextVar",
         isStateChange: isStateChangeMobile,
-        displayed: displayed(description, isStateChangeMobile)
+        displayed: displayedMobile
     )
     
     // If override switch is OFF, or it is asserting presence parse description and generate presence event
-    if (device.currentValue("switch")=="off" || value=="present") {
-        log.debug "Overide switch is OFF, parsing desciption: $description, generating event:"
+    if (switchState=="off" || valueVar=="present") {
+        log.debug "Overide switch is $switchState, mobileState is $valueVar, parsing desciption: $description, generating event:"
     
         def presenceEvent = [
             translatable: true,
-            name: name,
-            value: value,
+            name: nameVar,
+            value: valueVar,
             unit: null,
-            linkText: linkText,
-            descriptionText: descriptionText,
-            handlerName: handlerName,
+            linkText: linkTextVar,
+            descriptionText: descriptionTextVar,
+            handlerName: handlerNameVar,
             isStateChange: isStateChangePresence,
-            displayed: displayed(description, isStateChangePresence)
+            displayed: displayedPresence
  			]
     	
-        log.debug " name: $name"
-        log.debug " value: $value"
-        log.debug " linkText: $linkText"
-        log.debug " descriptionText: $descriptionText"
-        log.debug " handlerName: $handlerName"
-        log.debug " isStateChange: $isStateChangePresence"
-        log.debug " displayed: $displayed"
         return [presenceEvent, mobileEvent]
         
     } else {
@@ -106,6 +118,9 @@ def parse(String description) {
     }
 }
 
+/* ******************************************************************************************
+* ParseName: return presence if description starts with "presence: "					 	*
+*********************************************************************************************/
 private String parseName(String description) {
 	if (description?.startsWith("presence: ")) {
 		return "presence"
@@ -113,35 +128,21 @@ private String parseName(String description) {
 	null
 }
 
+/* ******************************************************************************************
+* On: Set override and send send presence event											 	*
+*********************************************************************************************/
 def on () {
-    
     // Overide state to present
 	def descriptionVar = "presence: 1"
-    
-    // Parse description
-    def nameVar = parseName(descriptionVar)
-    def valueVar = parseValue(descriptionVar)
-    def linkTextVar = getLinkText(device)
-    def descriptionTextVar = parseDescriptionText(linkTextVar, valueVar, '')
-    def handlerNameVar = getState(valueVar)
-    def isStateChange = isStateChange(device, nameVar, valueVar)
-    
-    log.debug "Switch ON: Overriding $device.displayName to present:"
-    log.debug " name: $nameVar"
-    log.debug " value: $valueVar"
-    log.debug " linkText: $linkTextVar"
-    log.debug " descriptionText: $descriptionTextVar"
-    log.debug " handlerName: $handlerNameVar"
-    log.debug " isStateChange: $isStateChange"
-    log.debug " displayed: ${displayed(descriptionVar, isStateChange)}"
-    
-    sendEvent(translatable: true, name: nameVar, value: valueVar, unit: null, linkText: linkTextVar, descriptionText: descriptionTextVar, handlerName: handlerNameVar, isStateChange: isStateChange, displayed: displayed(descriptionVar, isStateChange))
-    
+    log.debug("Switch ON, overriding $device.displayName to description: $descriptionVar:")
+    sendSwitchPresenceEvent(descriptionVar)
     sendEvent(name: "switch", value: "on", unit: null, linkText: "Override Switch", descriptionText: "Override Switch is on")
 }
 
+/* ******************************************************************************************
+* Off: Remove override, and set state to last commanded from mobiel presence			 	*
+*********************************************************************************************/
 def off () {
-    
 	// Define default description and overide if previous saved, FUTURE: Consider no action if state.results doesn't exist?
     def descriptionVar = "presence: 0"
     if (state.descriptionVar) {
@@ -151,26 +152,41 @@ def off () {
     	log.debug("Switch OFF, no previously saved state, setting $device.displayName to default $descriptionVar:")
     }
     
-    // Parse Description
-    def nameVar = parseName(descriptionVar)
-    def valueVar = parseValue(descriptionVar)
-    def linkTextVar = getLinkText(device)
-    def descriptionTextVar = parseDescriptionText(linkTextVar, valueVar, '')
-    def handlerNameVar = getState(valueVar)
-    def isStateChange = isStateChange(device, nameVar, valueVar)
-    
-    log.debug " name: $nameVar"
-    log.debug " value: $valueVar"
-    log.debug " linkText: $linkTextVar"
-    log.debug " descriptionText: $descriptionTextVar"
-    log.debug " handlerName: $handlerNameVar"
-    log.debug " isStateChange: $isStateChange"
-    log.debug " displayed: ${displayed(descriptionVar, isStateChange)}"
-    sendEvent(translatable: true, name: nameVar, value: valueVar, unit: null, linkText: linkTextVar, descriptionText: descriptionTextVar, handlerName: handlerNameVar, isStateChange: isStateChange, displayed: displayed(descriptionVar, isStateChange))
-	
+    sendSwitchPresenceEvent(descriptionVar)
     sendEvent(name: "switch", value: "off", unit: null, linkText: "Override Switch", descriptionText: "Override Switch is off")
 }
 
+/* ******************************************************************************************
+* SendSwitchPresenceEvent: parse description and send cooresponding event				 	*
+*********************************************************************************************/
+private sendSwitchPresenceEvent (description) {
+	// Parses description and sends corresponding event
+    def nameVar = parseName(description)
+    def valueVar = parseValue(description)
+    def linkTextVar = getLinkText(device)
+    def descriptionTextVar = parseDescriptionText(linkTextVar, valueVar, description)
+    def handlerNameVar = getState(valueVar)
+    def isStateChangePresence = isStateChange(device, nameVar, valueVar)
+    def displayedPresence = displayed(description, isStateChangePresence)
+    
+    log.debug "name=$nameVar, value=$valueVar, handlerName=$handlerNameVar"
+    log.debug "descriptionText=$descriptionTextVar, linkText=$linkTextVar"
+    log.debug "isStateChangePresence=$isStateChangePresence, displayedPresence=$displayedPresence"
+    
+    sendEvent(translatable: true, 
+    	name: nameVar, 
+        value: valueVar, 
+        unit: null, 
+        linkText: linkTextVar, 
+        descriptionText: descriptionTextVar, 
+        handlerName: handlerNameVar, 
+        isStateChange: isStateChangePresence, 
+        displayed: displayedPresence)
+}
+
+/* ******************************************************************************************
+* ParseValue: Parse description from mobile presence for present or not present			 	*
+*********************************************************************************************/
 private String parseValue(String description) {
 	switch(description) {
 		case "presence: 1": return "present"
@@ -179,6 +195,9 @@ private String parseValue(String description) {
 	}
 }
 
+/* ******************************************************************************************
+* ParseDescriptionTest: Parse text for arrival or leaving								 	*
+*********************************************************************************************/
 private parseDescriptionText(String linkText, String value, String description) {
 	switch(value) {
 		case "present": return "{{ linkText }} has arrived"
@@ -187,6 +206,9 @@ private parseDescriptionText(String linkText, String value, String description) 
 	}
 }
 
+/* ******************************************************************************************
+* GetState: parse value for arrived or left												 	*
+*********************************************************************************************/
 private getState(String value) {
 	switch(value) {
 		case "present": return "arrived"

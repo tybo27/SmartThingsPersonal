@@ -13,6 +13,10 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  */
+
+/* ******************************************************************************************
+* Metadata: definitions, capabilities, attributes, simulator, tiles						 	*
+*********************************************************************************************/
 metadata {
 	definition (name: "Counting Switch", namespace: "tybo27", author: "tybo27") {
 		capability "Refresh"
@@ -27,9 +31,8 @@ metadata {
 		command "reset"
 	}
 
-
 	simulator {
-		// TODO: define status and reply messages here
+		// Unused, no external inputs
 	}
 
 	tiles {
@@ -62,28 +65,33 @@ metadata {
 	}
 }
 
-// parse events into attributes
+
+/* ******************************************************************************************
+* Parse: Parse events into attibutes													 	*
+*********************************************************************************************/
 def parse(String description) {
 	log.debug "Parsing '${description}'"
-	// TODO: handle 'switch' attribute
-    //def evt = createEvent(name: "count", value: description)
-    
-    //return evt
+	// Unused
 }
 
-// handle commands
+/* ******************************************************************************************
+* Refresh: send event to update current count attribute									 	*
+*********************************************************************************************/
 def refresh() {
 	log.debug "Executing 'refresh'"
-	// TODO: handle 'refresh' command
     sendEvent(name:"count", value: (state.counter))
 }
 
+/* ******************************************************************************************
+* On: Set switch to counting, turn switch on, and increment counter						 	*
+*********************************************************************************************/
 def on() {
 	
     log.debug "Executing 'on'"
     sendEvent(name:"resetState", value: "counting")
 	sendEvent(name: "switch", value: "on")
-    //state.count= state.count+1
+
+	// Handle state.counter not being created yet
     if (state.counter) {
     	state.counter = state.counter + 1
     } else {
@@ -95,12 +103,18 @@ def on() {
     
 }
 
+/* ******************************************************************************************
+* Off: Turn switch off and set switch to counting										 	*
+*********************************************************************************************/
 def off() {
 	log.debug "Executing 'off'"
 	sendEvent(name: "switch", value: "off")
     sendEvent(name:"resetState", value: "counting")
 }
 
+/* ******************************************************************************************
+* Reset: Set state.counter to 0, refresh count attribute, and set state to reset					 	*
+*********************************************************************************************/
 def reset() {
 	state.counter = 0
     sendEvent(name:"count", value: (state.counter))
@@ -108,6 +122,9 @@ def reset() {
     log.debug "reset: ${state.counter}"
 }
 
+/* ******************************************************************************************
+* GetCount: return current state.counter												 	*
+*********************************************************************************************/
 def getCount() {
 	log.debug "getCount: ${state.counter}"
     return state.counter

@@ -15,6 +15,9 @@
  *
  */
  
+/* ******************************************************************************************
+* Preferences																			 	*
+*********************************************************************************************/
 preferences {
     input("usageWindowThresh", "number", title: "Time in minutes for usage alert calculations, reported as temperature to allow dashboard access", required: true,
           displayDuringSetup: true)
@@ -22,6 +25,9 @@ preferences {
           displayDuringSetup: true)
 }
 
+/* ******************************************************************************************
+* Metadata: definitions, capabilities, attributes, simulator, tiles						 	*
+*********************************************************************************************/
 metadata {
 	definition (name: "Egauge Monitor", namespace: "tybo27", author: "tybo27") {
 	capability "Power Meter"
@@ -42,7 +48,7 @@ metadata {
     attribute "frequency", "number"
     attribute "voltage1", "number"
     attribute "voltage2", "number"
-}
+	}
 
 	simulator {
 	}
@@ -168,7 +174,7 @@ metadata {
 }
 
 /* ******************************************************************************************
-* Parse hubAction returned queries into power and energy data							 	*
+* Parse: Parse hubAction returned queries into power and energy data					 	*
 *********************************************************************************************/
 def parse(String description) {
 	//log.debug "Parsing '${description}'"
@@ -335,7 +341,7 @@ def parse(String description) {
 }
 
 /* ******************************************************************************************
-* Poll is run automatically every several minutes, only request dailyValues since those  	*
+* Poll: Run automatically every several minutes, only request dailyValues since those  	*
 * are displayed as main, and used as temperature in Hub Dashboard							*
 *********************************************************************************************/
 def poll() {
@@ -344,7 +350,7 @@ def poll() {
 }
 
 /********************************************************************************************
-* Refresh is requested when on the device page, update both daily and instantaneous numbers	*
+* Refresh: Requested when on the device page, update both daily and instantaneous numbers	*
 ********************************************************************************************/
 def refresh() {
   log.debug "Executing 'refresh'"
@@ -353,7 +359,7 @@ def refresh() {
 }
 
 /********************************************************************************************
-* getDailyValuesHub calculates current time, x mintues ago, and midnight today to send a	*
+* getDailyValuesHub: Calculates current time, x mintues ago, and midnight today to send a	*
 * hubAction to the egauge requesting energy data for those times							*
 ********************************************************************************************/
 def getDailyValuesHub () {
@@ -381,7 +387,7 @@ def getDailyValuesHub () {
 }
 
 /********************************************************************************************
-* getInstantValuesHub sends a hubAction to the egauge requesting 'noteam' power data		*
+* getInstantValuesHub: Sends a hubAction to the egauge requesting 'noteam' power data		*
 ********************************************************************************************/
 def getInstantValuesHub () {
 	
@@ -399,7 +405,7 @@ def getInstantValuesHub () {
 
 
 /********************************************************************************************
-* removeBodyHeaders removes first line (xml tag) and second if !DOCTYPE to clean up for 	*
+* removeBodyHeaders: Removes first line (xml tag) and second if !DOCTYPE to clean up for 	*
 * XMLslurper																				*
 ********************************************************************************************/
 def removeBodyHeaders (body) {
@@ -416,14 +422,14 @@ def removeBodyHeaders (body) {
 }
 
 /********************************************************************************************
-* convertIPToHex converts in ipadress to hex (currently unused)								*																				*
+* convertIPToHex: Converts in ipadress to hex (currently unused)							*																				*
 ********************************************************************************************/
 private String convertIPToHex(ipAddress) {
 	return Long.toHexString(converIntToLong(ipAddress));
 }
 
 /********************************************************************************************
-* converIntToLong converts in ipadress:port from int to long (currently unused)				*																				*
+* converIntToLong: Converts in ipadress:port from int to long (currently unused)			*																				*
 ********************************************************************************************/
 private Long converIntToLong(ipAddress) {
 	log.debug "from Long converIntToLong = $ipAddress"
@@ -436,7 +442,7 @@ private Long converIntToLong(ipAddress) {
 }
 
 /********************************************************************************************
-* getHostAddress grabs hex device network ID (IpAddress:port in HEX!!!)and parses to 		*
+* getHostAddress: Grabs hex device network ID (IpAddress:port in HEX!!!)and parses to 		*
 * decimal format (nnn.nnn.nnn.nnn:xxxx) 													*																				*
 ********************************************************************************************/
 private getHostAddress() {
@@ -447,14 +453,14 @@ private getHostAddress() {
 }
 
 /********************************************************************************************
-* convertHexToInt converts hex value to integer												*																				*
+* convertHexToInt: Converts hex value to integer											*																				*
 ********************************************************************************************/
 private Integer convertHexToInt(hex) {
 	Integer.parseInt(hex,16)
 }
 
 /********************************************************************************************
-* convertHexToInt converts hex value to long												*																				*
+* convertHexToInt: Converts hex value to long												*																				*
 ********************************************************************************************/
 private Long convertHexToLong(hex) {
     if (hex[0..1]=="0x") {
@@ -464,7 +470,7 @@ private Long convertHexToLong(hex) {
 }
 
 /********************************************************************************************
-* convertHexToIP converts hex ip value to string in nnn.nnn.nnn.nnn format												*																				*
+* convertHexToIP: Converts hex ip value to string in nnn.nnn.nnn.nnn format					*																				*
 ********************************************************************************************/
 private String convertHexToIP(hex) {
 	[convertHexToInt(hex[0..1]),convertHexToInt(hex[2..3]),convertHexToInt(hex[4..5]),convertHexToInt(hex[6..7])].join(".")
