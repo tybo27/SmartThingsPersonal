@@ -19,16 +19,19 @@
 * Preferences																			 	*
 *********************************************************************************************/
 preferences {
+
     input("usageWindowThresh", "number", title: "Time in minutes for usage alert calculations, reported as temperature to allow dashboard access", required: true,
           displayDuringSetup: true)
     input("resolution", "number", title: "Number of decimals to show for current and daily power", required: true,
           displayDuringSetup: true)
+
 }
 
 /* ******************************************************************************************
 * Metadata: definitions, capabilities, attributes, simulator, tiles						 	*
 *********************************************************************************************/
 metadata {
+
 	definition (name: "Egauge Monitor", namespace: "tybo27", author: "tybo27") {
 	capability "Power Meter"
     capability "Refresh"
@@ -177,6 +180,7 @@ metadata {
 * Parse: Parse hubAction returned queries into power and energy data					 	*
 *********************************************************************************************/
 def parse(String description) {
+
 	//log.debug "Parsing '${description}'"
 	def msg = parseLanMessage(description)
     def headersAsString = msg.header // => headers as a string
@@ -341,21 +345,25 @@ def parse(String description) {
 }
 
 /* ******************************************************************************************
-* Poll: Run automatically every several minutes, only request dailyValues since those  	*
+* Poll: Run automatically every several minutes, only request dailyValues since those 	 	*
 * are displayed as main, and used as temperature in Hub Dashboard							*
 *********************************************************************************************/
 def poll() {
+
 	log.debug "Executing 'poll'"
     getDailyValuesHub()
+
 }
 
 /********************************************************************************************
 * Refresh: Requested when on the device page, update both daily and instantaneous numbers	*
 ********************************************************************************************/
 def refresh() {
+
   log.debug "Executing 'refresh'"
   getDailyValuesHub()
   getInstantValuesHub()
+
 }
 
 /********************************************************************************************
@@ -363,6 +371,7 @@ def refresh() {
 * hubAction to the egauge requesting energy data for those times							*
 ********************************************************************************************/
 def getDailyValuesHub () {
+
 	log.debug "Executing 'getDailyValuesHub'"
     def offset=10 // offset for api call in s (ensure data is written to register already)
     def nowUTC = Math.round( now()/1000 - offset )  //.round(0)
@@ -401,6 +410,7 @@ def getInstantValuesHub () {
 	)
     result
     return result
+
 }
 
 
@@ -425,13 +435,16 @@ def removeBodyHeaders (body) {
 * convertIPToHex: Converts in ipadress to hex (currently unused)							*																				*
 ********************************************************************************************/
 private String convertIPToHex(ipAddress) {
+
 	return Long.toHexString(converIntToLong(ipAddress));
+
 }
 
 /********************************************************************************************
 * converIntToLong: Converts in ipadress:port from int to long (currently unused)			*																				*
 ********************************************************************************************/
 private Long converIntToLong(ipAddress) {
+
 	log.debug "from Long converIntToLong = $ipAddress"
 	long result = 0
 	def parts = ipAddress.split("\\.")
@@ -439,6 +452,7 @@ private Long converIntToLong(ipAddress) {
         result |= (Long.parseLong(parts[3 - i]) << (i * 8));
     }
     return result & 0xFFFFFFFF;
+
 }
 
 /********************************************************************************************
@@ -446,32 +460,43 @@ private Long converIntToLong(ipAddress) {
 * decimal format (nnn.nnn.nnn.nnn:xxxx) 													*																				*
 ********************************************************************************************/
 private getHostAddress() {
+
 	def parts = device.deviceNetworkId.split(":")
 	def ip = convertHexToIP(parts[0])
 	def port = convertHexToInt(parts[1])
 	return ip + ":" + port
+
 }
 
 /********************************************************************************************
 * convertHexToInt: Converts hex value to integer											*																				*
 ********************************************************************************************/
 private Integer convertHexToInt(hex) {
+	
+	if (hex[0..1]=="0x") {
+    	hex = hex[2..-1]
+    }
 	Integer.parseInt(hex,16)
+
 }
 
 /********************************************************************************************
 * convertHexToInt: Converts hex value to long												*																				*
 ********************************************************************************************/
 private Long convertHexToLong(hex) {
+
     if (hex[0..1]=="0x") {
     	hex = hex[2..-1]
     }
     Long.parseLong(hex,16)
+
 }
 
 /********************************************************************************************
 * convertHexToIP: Converts hex ip value to string in nnn.nnn.nnn.nnn format					*																				*
 ********************************************************************************************/
 private String convertHexToIP(hex) {
+
 	[convertHexToInt(hex[0..1]),convertHexToInt(hex[2..3]),convertHexToInt(hex[4..5]),convertHexToInt(hex[6..7])].join(".")
+
 }
