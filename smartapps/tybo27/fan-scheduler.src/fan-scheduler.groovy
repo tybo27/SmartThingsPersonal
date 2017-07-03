@@ -29,7 +29,8 @@ definition(
 
 preferences {
 	section("Pick a Thermostat") {
-        input "thermostat", "capability.thermostatFanMode", required: true, title: "Thermostat"
+        //input "thermostat", "capability.thermostatFanMode", required: true, title: "Thermostat"
+        input "thermostat", "capability.thermostat", required: true, title: "Thermostat"
 		 input "runTime", "number", required: true, title: "Fan Run Time (min)"
          input "runPeriod", "number", required: true, title: "Fan Run Period: 1, 5 10,15,30, 60, 180 minutes"
 	}
@@ -82,7 +83,7 @@ def initialize() {
 
 def turnFanOn() {
 	log.debug "Turning Fan on"
-	themostat.fanOn()
+	thermostat.fanOn()
     runIn(60*runTime, turnFanOff)
 }
 
