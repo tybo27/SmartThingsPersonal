@@ -52,14 +52,12 @@ metadata {
         command "nextVideoMode"
         command "nextAspectRatio"
         
-        
         command "nextAudioInput"
         command "speakerOn"
         command "speakerOff"
         
-        
         attribute "projectorStatus", "enum", ["Lamp On", "Standby", "Power Saving", "Cooling", "Warming Up"]
-        attribute "powerSaving", "enum", ["Off", "30", "60", "90", "120", "No Statement"]
+        attribute "powerSaving", "enum", ["Off", "30 min", "60 min", "90 min", "120 min", "No Statement"]
         attribute "alertStatus", "enum", ["Lamp warming", "Low lamp life", "Temperature"]
         attribute "projectorMode", "enum", ["Front Projection-Desktop", "Front Projection-Ceiling Mount", "Rear Projection-Desktop", "Rear Projection-Ceiling Mount", "No Statement"]
         attribute "sourceSelect", "enum", ["VGA-A", "VGA-B", "S-VIDEO", "COMPOSITE VIDEO", "HDMI", "No Statement"]
@@ -116,7 +114,10 @@ metadata {
             state "Cooling", icon: "st.Electronics.electronics7", label:'${name}', action:"switch.on", backgroundColor:"#ADD8E6", nextState:"Warming Up"
             state "Power Saving", icon: "st.Electronics.electronics7", label:'${name}', action:"switch.on", backgroundColor:"#4E8975", nextState:"Warming Up"
         }
-        standardTile("refresh", "device.projectorStatus", height: 2, width: 2, inactiveLabel: false, decoration: "flat") {
+        valueTile("Refresh Label", "device.projectorStatus", height: 1, width: 2, inactiveLabel: false, decoration: "flat") {
+        	state "default", label: "Refresh"
+        }
+        standardTile("refresh", "device.projectorStatus", height: 1, width: 4, inactiveLabel: false, decoration: "flat") {
             state "default", action:"refresh", icon:"st.secondary.refresh"
         }
         
@@ -132,8 +133,8 @@ metadata {
     		state "on", label: "Speaker", icon: "st.Electronics.electronics16", backgroundColor: "#79b821", action: "speakerOff"
         }
         standardTile("Mute Button", "device.mute", height: 1, width: 1, inactiveLabel: false, decoration: "flat") {
-            state "off", label: "Mute", icon: "st.Entertainment.entertainment15", backgroundColor: "#ffffff", action: "muteOn"
-    		state "on", label: "Mute", icon: "st.Entertainment.entertainment15", backgroundColor: "#79b821", action: "muteOff"
+            state "off", label: "Mute", icon: "st.Entertainment.entertainment15", backgroundColor: "#ffffff", action: "muteOn", nextState: "On"
+    		state "on", label: "Mute", icon: "st.Entertainment.entertainment15", backgroundColor: "#79b821", action: "muteOff", nextState: "Off"
         }
         
        // Brightness, ECO, and blank
@@ -144,15 +145,15 @@ metadata {
     		state "level", action:"setBrightness"
 		}
         standardTile("ECO Mode Button", "device.ecoMode", height: 1, width: 1, inactiveLabel: false, decoration: "flat") {
-            state "off", label: "ECO", icon: "st.Outdoor.outdoor3", backgroundColor: "#ffffff", action: "ecoModeOn"
-    		state "on", label: "ECO", icon: "st.Outdoor.outdoor3", backgroundColor: "#79b821", action: "ecoModeOff"
+            state "Normal Mode", label: "ECO", icon: "st.Outdoor.outdoor3", backgroundColor: "#ffffff", action: "ecoModeOn"
+    		state "ECO Mode", label: "ECO", icon: "st.Outdoor.outdoor3", backgroundColor: "#79b821", action: "ecoModeOff"
         }
         standardTile("Blank Button", "device.blankScreen", height: 1, width: 1, inactiveLabel: false, decoration: "flat") {
-            state "off", label: "Blank", icon: "st.Electronics.electronics18", backgroundColor: "#ffffff", action: "blankOn"
-    		state "on", label: "Blank", icon: "st.Entertainment.entertainment18", backgroundColor: "#79b821", action: "blankOff"
+            state "off", label: "Blank", icon: "st.Electronics.electronics18", backgroundColor: "#ffffff", action: "blankScreenOn"
+    		state "on", label: "Blank", icon: "st.Electronics.electronics18", backgroundColor: "#79b821", action: "blankScreenOff"
         }
         
-        //Contrast and ECO Mode
+        //Contrast and Video Mode
         valueTile("Contrast Label", "device.contrast", height: 1, width: 2, inactiveLabel: false, decoration: "flat") {
         	state "default", label: "Contrast"
         }
@@ -179,24 +180,18 @@ metadata {
         standardTile("Next Audio Input Label", "device.audioInput", height: 1, width: 2, inactiveLabel: false, decoration: "flat") {
         	state "default", label: 'Audio: ${currentValue}', action: "nextAudioInput"
         }
-        
-         
-        /*
-        command "autoAdjust"
-        StandardTile("Auto Adjust Button", "device.blankScreen", height: 1, width: 1, inactiveLabel: false, decoration: "flat") {
-            state "off", label: "Blank", icon: "st.Electronics.electronics18", backgroundColor: "#ffffff", action: "switch.on"
-    		state "on", label: "Blank", icon: "st.Entertainment.entertainment18", backgroundColor: "#79b821", action: "switch.off"
-        }*/
+        standardTile("Auto Adjust Button", "device.autoAdjust", height: 1, width: 2, inactiveLabel: false, decoration: "flat") {
+            state "default", label: "Auto Adjust", action: "autoAdjust"
+        }
         
         // Tiles
-        main (["Power On"])
-        details(["Power On", "Status", "refresh", 
+        main (["mainControlTile"])
+        details(["mainControlTile", "Refresh Label", "refresh",
         	"Volume Label", "Volume Control", "Speaker Button", "Mute Button",
             "Brightness Label", "Brightness Control", "ECO Mode Button", "Blank Button",
             "Contrast Label", "Contrast Control", "Video Mode Label",
             "Projector Mode Label", "Power Saving Label", "Aspect Ratio Label",
-            "Next Source Label", "Next Audio Input Label",
-            
+            "Next Source Label", "Next Audio Input Label", "Auto Adjust Button"            
             ])
 	}
 }
@@ -254,7 +249,8 @@ def parse(String description) {
             //log.debug "Parse: Sending events:$projectorEvents"
             return projectorEvents
         } else {
-        	runIn(10,refresh)
+        	log.debug "Parse returned 'back' status"//, scheduling refresh in 61 seconds"
+        	//runIn(61,refresh)
     	}
     } else {
     	log.debug "Parse: Returned status: $status"
@@ -270,11 +266,12 @@ def on() {
     def commandName = 'PowerOn'
     def command = 'Power On ' 
     //def attributeName = getAttributeName(commandName)
-    //def valueText = getValueText(commandName)
+    //def valueText = getValueText(commandName, )
 	
     def commandResponse = sendCommand(structureCommand(commandName, command))
     //log.debug "Hub Action Response: ${commandResponse}"
     return commandResponse
+    runIn(30,refresh)
     
     sendEvent(
         name: 'switch', // String - The name of the event. Typically corresponds to an attribute name of the device-handler’s capabilities.
@@ -298,6 +295,7 @@ def off() {
     //def attributeName = getAttributeName(commandName)
     //def valueText = getValueText(commandName)
 	
+    runIn(30,refresh)
     def commandResponse = sendCommand(structureCommand(commandName, command))
     //log.debug "Command Response: ${commandResponse}"
     return commandResponse
@@ -352,7 +350,7 @@ def setVolume(value) {
 /* ******************************************************************************************
 * mute: Mute audio																		 	*
 *********************************************************************************************/
-def mute () {
+def muteOn () {
 
 	log.debug "Mute on"
     def commandName = 'Volume'
@@ -380,7 +378,7 @@ def mute () {
 /* ******************************************************************************************
 * unmute: Unmute audio																	 	*
 *********************************************************************************************/
-def unmute () {
+def muteOff () {
 
 	log.debug "Mute off"
     def commandName = 'Volume'
@@ -416,7 +414,7 @@ def blankScreenOn () {
     def command = getValueFromText(commandName, valueText) // 85
     def attributeName = getAttributeName(commandName)
 	
-    def commandResponse = sendCommand(structureCommand(commandName, command))
+    def commandResponse = sendCommand(structureShortCommand(commandName, command))
     //log.debug "Hub Action Response: ${commandResponse}"
     return commandResponse
     
@@ -443,7 +441,7 @@ def blankScreenOff () {
     def command = getValueFromText(commandName, valueText)// 170
     def attributeName = getAttributeName(commandName)
 	
-    def commandResponse=sendCommand(structureCommand(commandName, command))
+    def commandResponse=sendCommand(structureShortCommand(commandName, command))
     //log.debug "Hub Action Response: ${commandResponse}"
     return commandResponse
     
@@ -466,7 +464,7 @@ def setBrightness(value) {
 	
     def commandName = 'Bright'
     def attributeName = getAttributeName(commandName)
-    def valueText = getValueText(commandName, value)
+    def valueText = getValueText(commandName, value.toString())
 	
     log.debug "Executing 'setBrightness' to $value"
     def command = value
@@ -501,7 +499,7 @@ def setContrast(value) {
 	
     def commandName = 'Contrast'
     def attributeName = getAttributeName(commandName)
-    def valueText = getValueText(commandName, value)
+    def valueText = getValueText(commandName, value.toString())
 	
     log.debug "Executing 'setContrast' to $value"
     def command = value
@@ -530,6 +528,22 @@ def setContrast(value) {
 }
 
 /* ******************************************************************************************
+* autoAdjust: Command auto adjust the brightness and contrast							 	*
+*********************************************************************************************/
+def autoAdjust() {
+	
+    def commandName = 'btnAutoAdj'
+    //def attributeName = getAttributeName(commandName)
+    //def valueText = getValueText(commandName, value.toString())
+    def command = 'Auto Adjust '
+    log.debug "Executing 'setContrast' to $value"
+    
+    def commandResponse = sendCommand(structureCommand(commandName, command))
+    //log.debug "Command Response: ${commandResponse}"
+    return commandResponse
+}
+
+/* ******************************************************************************************
 * ecoModeOn: Turn on ECO Mode the screen												 	*
 *********************************************************************************************/
 def ecoModeOn () {
@@ -537,11 +551,11 @@ def ecoModeOn () {
 	log.debug "ecoModeOn"
     
     def commandName = 'ecoMode'
-    def valueText = 'On'
+    def valueText = 'ECO Mode'
     def command = getValueFromText(commandName, valueText) //27
     def attributeName = getAttributeName(commandName)
 	
-    def commandResponse=sendCommand(structureCommand(commandName, command))
+    def commandResponse=sendCommand(structureShortCommand(commandName, command))
     //log.debug "Hub Action Response: ${commandResponse}"
     return commandResponse
     
@@ -561,14 +575,14 @@ def ecoModeOn () {
 *********************************************************************************************/
 def ecoModeOff () {
 
-	log.debug "ecoModeOn"
+	log.debug "ecoModeOff"
     
     def commandName = 'ecoMode'
-    def valueText = 'Off'
+    def valueText = 'Normal Mode'
     def command = getValueFromText(commandName, valueText) //28
     def attributeName = getAttributeName(commandName)
 	
-    def commandResponse=sendCommand(structureCommand(commandName, command))
+    def commandResponse=sendCommand(structureShortCommand(commandName, command))
     //log.debug "Hub Action Response: ${commandResponse}"
     return commandResponse
     
@@ -595,7 +609,7 @@ def speakerOn () {
     def command = getValueFromText(commandName, valueText) //85
     def attributeName = getAttributeName(commandName)
 	
-    def commandResponse=sendCommand(structureCommand(commandName, command))
+    def commandResponse=sendCommand(structureShortCommand(commandName, command))
     //log.debug "Hub Action Response: ${commandResponse}"
     return commandResponse
     
@@ -622,7 +636,7 @@ def speakerOff () {
     def command = getValueFromText(commandName, valueText) //170
     def attributeName = getAttributeName(commandName)
 	
-    def commandResponse=sendCommand(structureCommand(commandName, command))
+    def commandResponse=sendCommand(structureShortCommand(commandName, command))
     //log.debug "Hub Action Response: ${commandResponse}"
     return commandResponse
     
@@ -641,11 +655,13 @@ def speakerOff () {
 * nextPowerSaving: Cycle power saving modes												 	*
 *********************************************************************************************/
 def nextPowerSaving () {
-
-	log.debug "nextPowerSaving"
+	
+    //log.debug "nextPowerSaving"
     def commandName = 'PwSave'
-    def curMode = device.currentValue(commandName)
+    def attributeName = getAttributeName(commandName)
+    def curMode = device.currentValue(attributeName)
     def nextMode = curMode
+    log.debug "nextPowerSaving: curMode=$curMode"
     
     switch (curMode) {
     	case 'Off':
@@ -671,19 +687,20 @@ def nextPowerSaving () {
         	break
     }
     
-    def command = getValueFromText(nextMode)
-    def attributeName = getAttributeName(commandName)
+    log.debug "nextPowerSaving: curMode=$curMode, nextMode =$nextMode"
     
-    def commandResponse=sendCommand(structureCommand(commandName, command))
+    def command = getValueFromText(commandName,nextMode)
+    
+    def commandResponse=sendCommand(structureShortCommand(commandName, command))
     //log.debug "Hub Action Response: ${commandResponse}"
     return commandResponse
     
     sendEvent(
         name: attributeName, // String - The name of the event. Typically corresponds to an attribute name of the device-handler’s capabilities.
-        value: valueText, //The value of the event. The value is stored as a String, but you can pass in numbers or other objects. SmartApps will be responsible for parsing the event’s value into back to its desired form (e.g., parsing a number from a string)
-        descriptionText: "Setting $attributeName to $valueText", //String - The description of this event. This appears in the mobile application activity feed for the device. If not specified, this will be created using the event name and value.
+        value: nextMode, //The value of the event. The value is stored as a String, but you can pass in numbers or other objects. SmartApps will be responsible for parsing the event’s value into back to its desired form (e.g., parsing a number from a string)
+        descriptionText: "Setting $attributeName to $nextMode", //String - The description of this event. This appears in the mobile application activity feed for the device. If not specified, this will be created using the event name and value.
         displayed: true, //displayable?
-        linkText: "$attributeName $valueText", //String - Name of the event to show in the mobile application activity feed, if specified
+        linkText: "$attributeName $nextMode", //String - Name of the event to show in the mobile application activity feed, if specified
         //isStateChange: isStateChange(),
         unit: null
     )
@@ -694,9 +711,10 @@ def nextPowerSaving () {
 *********************************************************************************************/
 def nextProjectorMode () {
 
-	log.debug "nextProjectorMode"
+	//log.debug "nextProjectorMode"
     def commandName = 'PrjMode'
-    def curMode = device.currentValue(commandName)
+    def attributeName = getAttributeName(commandName)
+    def curMode = device.currentValue(attributeName)
     def nextMode = curMode
     
     switch (curMode) {
@@ -720,19 +738,20 @@ def nextProjectorMode () {
         	break
     }
     
-    def command = getValueFromText(nextMode)
-    def attributeName = getAttributeName(commandName)
+    log.debug "nextProjectorMode: curMode=$curMode, nextMode=$nextMode"
     
-    def commandResponse=sendCommand(structureCommand(commandName, command))
+    def command = getValueFromText(commandName, nextMode)
+    
+    def commandResponse=sendCommand(structureShortCommand(commandName, command))
     //log.debug "Hub Action Response: ${commandResponse}"
     return commandResponse
     
     sendEvent(
         name: attributeName, // String - The name of the event. Typically corresponds to an attribute name of the device-handler’s capabilities.
-        value: valueText, //The value of the event. The value is stored as a String, but you can pass in numbers or other objects. SmartApps will be responsible for parsing the event’s value into back to its desired form (e.g., parsing a number from a string)
-        descriptionText: "Setting $attributeName to $valueText", //String - The description of this event. This appears in the mobile application activity feed for the device. If not specified, this will be created using the event name and value.
+        value: nextMode, //The value of the event. The value is stored as a String, but you can pass in numbers or other objects. SmartApps will be responsible for parsing the event’s value into back to its desired form (e.g., parsing a number from a string)
+        descriptionText: "Setting $attributeName to $nextMode", //String - The description of this event. This appears in the mobile application activity feed for the device. If not specified, this will be created using the event name and value.
         displayed: true, //displayable?
-        linkText: "$attributeName $valueText", //String - Name of the event to show in the mobile application activity feed, if specified
+        linkText: "$attributeName $nextMode", //String - Name of the event to show in the mobile application activity feed, if specified
         //isStateChange: isStateChange(),
         unit: null
     )
@@ -743,9 +762,10 @@ def nextProjectorMode () {
 *********************************************************************************************/
 def nextSource () {
 
-	log.debug "nextSource"
+	//log.debug "nextSource"
     def commandName = 'PrjSRC'
-    def curMode = device.currentValue(commandName)
+    def attributeName = getAttributeName(commandName)
+    def curMode = device.currentValue(attributeName)
     def nextMode = curMode
     
     switch (curMode) {
@@ -773,19 +793,20 @@ def nextSource () {
         	break
     }
     
-    def command = getValueFromText(nextMode)
-    def attributeName = getAttributeName(commandName)
+    log.debug "nextSource: curMode=$curMode, nextMode=$nextMode"
     
-    def commandResponse=sendCommand(structureCommand(commandName, command))
+    def command = getValueFromText(commandName, nextMode)
+    
+    def commandResponse=sendCommand(structureShortCommand(commandName, command))
     //log.debug "Hub Action Response: ${commandResponse}"
     return commandResponse
     
     sendEvent(
         name: attributeName, // String - The name of the event. Typically corresponds to an attribute name of the device-handler’s capabilities.
-        value: valueText, //The value of the event. The value is stored as a String, but you can pass in numbers or other objects. SmartApps will be responsible for parsing the event’s value into back to its desired form (e.g., parsing a number from a string)
-        descriptionText: "Setting $attributeName to $valueText", //String - The description of this event. This appears in the mobile application activity feed for the device. If not specified, this will be created using the event name and value.
+        value: nextMode, //The value of the event. The value is stored as a String, but you can pass in numbers or other objects. SmartApps will be responsible for parsing the event’s value into back to its desired form (e.g., parsing a number from a string)
+        descriptionText: "Setting $attributeName to $nextMode", //String - The description of this event. This appears in the mobile application activity feed for the device. If not specified, this will be created using the event name and value.
         displayed: true, //displayable?
-        linkText: "$attributeName $valueText", //String - Name of the event to show in the mobile application activity feed, if specified
+        linkText: "$attributeName $nextMode", //String - Name of the event to show in the mobile application activity feed, if specified
         //isStateChange: isStateChange(),
         unit: null
     )
@@ -796,9 +817,10 @@ def nextSource () {
 *********************************************************************************************/
 def nextVideoMode () {
 
-	log.debug "nextVideoMode"
+	//log.debug "nextVideoMode"
     def commandName = 'VideoMode'
-    def curMode = device.currentValue(commandName)
+    def attributeName = getAttributeName(commandName)
+    def curMode = device.currentValue(attributeName)
     def nextMode = curMode
     
     switch (curMode) {
@@ -825,19 +847,20 @@ def nextVideoMode () {
         	break
     }
     
-    def command = getValueFromText(nextMode)
-    def attributeName = getAttributeName(commandName)
+    log.debug "nextVideoMode: curMode=$curMode, nextMode=$nextMode"
     
-    def commandResponse=sendCommand(structureCommand(commandName, command))
+    def command = getValueFromText(commandName, nextMode)
+    
+    def commandResponse=sendCommand(structureShortCommand(commandName, command))
     //log.debug "Hub Action Response: ${commandResponse}"
     return commandResponse
     
     sendEvent(
         name: attributeName, // String - The name of the event. Typically corresponds to an attribute name of the device-handler’s capabilities.
-        value: valueText, //The value of the event. The value is stored as a String, but you can pass in numbers or other objects. SmartApps will be responsible for parsing the event’s value into back to its desired form (e.g., parsing a number from a string)
-        descriptionText: "Setting $attributeName to $valueText", //String - The description of this event. This appears in the mobile application activity feed for the device. If not specified, this will be created using the event name and value.
+        value: nextMode, //The value of the event. The value is stored as a String, but you can pass in numbers or other objects. SmartApps will be responsible for parsing the event’s value into back to its desired form (e.g., parsing a number from a string)
+        descriptionText: "Setting $attributeName to $nextMode", //String - The description of this event. This appears in the mobile application activity feed for the device. If not specified, this will be created using the event name and value.
         displayed: true, //displayable?
-        linkText: "$attributeName $valueText", //String - Name of the event to show in the mobile application activity feed, if specified
+        linkText: "$attributeName $nextMode", //String - Name of the event to show in the mobile application activity feed, if specified
         //isStateChange: isStateChange(),
         unit: null
     )
@@ -848,9 +871,10 @@ def nextVideoMode () {
 *********************************************************************************************/
 def nextAspectRatio () {
 
-	log.debug "nextAspectRatio"
+	//log.debug "nextAspectRatio"
     def commandName = 'Aspect'
-    def curMode = device.currentValue(commandName)
+    def attributeName = getAttributeName(commandName)
+    def curMode = device.currentValue(attributeName)
     def nextMode = curMode
     
     switch (curMode) {
@@ -868,19 +892,20 @@ def nextAspectRatio () {
         	break
     }
     
-    def command = getValueFromText(nextMode)
-    def attributeName = getAttributeName(commandName)
+    log.debug "nextAspectRatio: curMode=$curMode, nextMode=$nextMode"
     
-    def commandResponse=sendCommand(structureCommand(commandName, command))
+    def command = getValueFromText(commandName, nextMode)
+    
+    def commandResponse=sendCommand(structureShortCommand(commandName, command))
     //log.debug "Hub Action Response: ${commandResponse}"
     return commandResponse
     
     sendEvent(
         name: attributeName, // String - The name of the event. Typically corresponds to an attribute name of the device-handler’s capabilities.
-        value: valueText, //The value of the event. The value is stored as a String, but you can pass in numbers or other objects. SmartApps will be responsible for parsing the event’s value into back to its desired form (e.g., parsing a number from a string)
-        descriptionText: "Setting $attributeName to $valueText", //String - The description of this event. This appears in the mobile application activity feed for the device. If not specified, this will be created using the event name and value.
+        value: nextMode, //The value of the event. The value is stored as a String, but you can pass in numbers or other objects. SmartApps will be responsible for parsing the event’s value into back to its desired form (e.g., parsing a number from a string)
+        descriptionText: "Setting $attributeName to $nextMode", //String - The description of this event. This appears in the mobile application activity feed for the device. If not specified, this will be created using the event name and value.
         displayed: true, //displayable?
-        linkText: "$attributeName $valueText", //String - Name of the event to show in the mobile application activity feed, if specified
+        linkText: "$attributeName $nextMode", //String - Name of the event to show in the mobile application activity feed, if specified
         //isStateChange: isStateChange(),
         unit: null
     )
@@ -891,9 +916,10 @@ def nextAspectRatio () {
 *********************************************************************************************/
 def nextAudioInput () {
 
-	log.debug "nextAudioInput"
+	//log.debug "nextAudioInput"
     def commandName = 'PrjSRCA'
-    def curMode = device.currentValue(commandName)
+    def attributeName = getAttributeName(commandName)
+    def curMode = device.currentValue(attributeName)
     def nextMode = curMode
     
     switch (curMode) {
@@ -917,19 +943,20 @@ def nextAudioInput () {
         	break
     }
     
-    def command = getValueFromText(nextMode)
-    def attributeName = getAttributeName(commandName)
+    log.debug "nextAudioInput: curMode=$curMode, nextMode=$nextMode"
     
-    def commandResponse=sendCommand(structureCommand(commandName, command))
+    def command = getValueFromText(commandName,nextMode)
+    
+    def commandResponse=sendCommand(structureShortCommand(commandName, command))
     //log.debug "Hub Action Response: ${commandResponse}"
     return commandResponse
     
     sendEvent(
         name: attributeName, // String - The name of the event. Typically corresponds to an attribute name of the device-handler’s capabilities.
-        value: valueText, //The value of the event. The value is stored as a String, but you can pass in numbers or other objects. SmartApps will be responsible for parsing the event’s value into back to its desired form (e.g., parsing a number from a string)
-        descriptionText: "Setting $attributeName to $valueText", //String - The description of this event. This appears in the mobile application activity feed for the device. If not specified, this will be created using the event name and value.
+        value: nextMode, //The value of the event. The value is stored as a String, but you can pass in numbers or other objects. SmartApps will be responsible for parsing the event’s value into back to its desired form (e.g., parsing a number from a string)
+        descriptionText: "Setting $attributeName to $nextMode", //String - The description of this event. This appears in the mobile application activity feed for the device. If not specified, this will be created using the event name and value.
         displayed: true, //displayable?
-        linkText: "$attributeName $valueText", //String - Name of the event to show in the mobile application activity feed, if specified
+        linkText: "$attributeName $nextMode", //String - Name of the event to show in the mobile application activity feed, if specified
         //isStateChange: isStateChange(),
         unit: null
     )
@@ -1009,7 +1036,7 @@ def getValueText (String fieldName, String value) {
                 	valueText = ''
                     break
             }
-            breka
+            break
         case 'ecoMode':
         	switch (value) {
             	case '28':
@@ -1263,7 +1290,7 @@ def getValueFromText (String fieldName, String valueText) {
                 	value = ''
                     break
             }
-            breka
+            break
         case 'ecoMode':
         	switch (valueText) {
             	case  'Normal Mode':
@@ -1439,8 +1466,8 @@ def getValueFromText (String fieldName, String valueText) {
         	value = 'Attribute Name not found'
             break
     }
-    //log.debug "getValueFromText: Input=$fieldName=$valueText,  Output=$value"
-    return valueText
+    log.debug "getValueFromText: Input=$fieldName=$valueText,  Output=$value"
+    return value
 }
 
 /* ******************************************************************************************
@@ -1561,7 +1588,7 @@ def parseResponseBody (body) {
             //log.debug "parseResponseBody: type=$fieldType, field=$fieldName"
         } else if (it =~/<option / && it =~ /SELECTED/ && fieldType == 'select') {
             fieldValue = it.find(/VALUE="(.*?)"/)
-            if (fieldName =~ /PwSave/) {
+            if (fieldName =~ /PrjSRC/) {
                 log.debug "parseResponseBody: $it \r\n FOUND type=$fieldType, field=$fieldName, value=$fieldValue"
             }
             
@@ -1572,6 +1599,9 @@ def parseResponseBody (body) {
             }
             //log.debug "parseResponseBody: type=$fieldType, field=$fieldName value=$fieldValue"   
         } 
+    }
+    if (status == ['Back' : 'Please wait...'] || status == ['Back' : 'Back']) {
+    	status = null
     }
     return status
 }
@@ -1625,6 +1655,7 @@ def structureCommand (commandName, commandValue) {
 				'Aspect': '1',
 				'Bright': '0',
 				'Contrast': '0',
+                'btnAutoAdj': '',
 				'PrjSRCA': '1',
 				'Volume': '0',
 				'Spk': '170'  
@@ -1636,10 +1667,72 @@ def structureCommand (commandName, commandValue) {
     
     def command=''
     defaults.each { key, value ->
-    	if (key==commandName) {
+    	if (key == commandName) {
         	//log.debug "structureCommand: Adding commanded input: &${commandName}=${commandValue}"
-        	command = command + "&" + commandName + "=" + commandValue
+            if (commandName == "PowerOn" & commandValue == "Power Off ") {
+            	command = command + "&PowerOff=" + commandValue
+            } else {
+        		command = command + "&" + commandName + "=" + commandValue
+            }
+            switch (key) {
+            	case 'Volume':
+        			command = command + "&" + 'btnVol=Set '
+        			break
+            	case 'Bright':
+        			command = command + "&" + 'btnBright=Set '
+        			break
+                case 'Contrast':
+        			command = command + "&" + 'btnContrast=Set '
+        			break
+            }
         } else if (projStatus.containsKey(key)) {
+        	//log.debug "structureCommand: Adding state status: &${key}=${projStatus[key]}"
+        	if (key != "PowerOn" & key != "btnAutoAdj") {
+            	command = command + "&" + key + "=" + projStatus[key]
+            }
+        } else {
+        	//log.debug "structureCommand: Adding default status: &${key}=${value}"
+        	if (key != "PowerOn" & key != "btnAutoAdj") {
+            	command = command + "&" + key + "=" + value
+            }
+        }
+    }
+    command = command -"&"
+    def body = command
+    //def body = "Content-Type: application/x-www-form-urlencoded\r\nContent-Length: ${command.length()}\r\n\r\n${command}"
+    log.debug "structureCommand: body=\r\n$body"
+    return body
+}
+
+/* ******************************************************************************************
+* structureShortCommand: Creates body for POST in following format:							 	*
+    Content-Type: application/x-www-form-urlencoded\r\n
+    Content-Length: 279\r\n
+    \r\n
+    PJSTATE=0&DSP_SOURCE=0&ERRORSTA=85&FREEZE0=&HIDE0=170&inp_objname=&inp_objvalue=0&redio_objname=&radio_objvalue=0&btnRadioChg=
+*********************************************************************************************/
+def structureShortCommand (commandName, commandValue) {
+    
+    log.debug "structureCommand: Setting $commandName to $commandValue"
+    def defaults = ['PJSTATE': '0',
+				'DSP_SOURCE': '0',
+				'ERRORSTA': '85',
+				'FREEZE0': '',
+				'HIDE0': '170',
+				'inp_objname': '',
+				'inp_objvalue': '0',
+				'redio_objname': commandName,
+				'radio_objvalue': commandValue,
+                'btnRadioChg': ''
+    ]
+    def projStatus = [:]
+    if (state.status) {
+    	projStatus = state.status
+	}
+    
+    def command=''
+    defaults.each { key, value ->
+        if (projStatus.containsKey(key)) {
         	//log.debug "structureCommand: Adding state status: &${key}=${projStatus[key]}"
         	command = command + "&" + key + "=" + projStatus[key]
         } else {
@@ -1648,7 +1741,8 @@ def structureCommand (commandName, commandValue) {
         }
     }
     command = command -"&"
-    def body = "Content-Type: application/x-www-form-urlencoded\r\nContent-Length: ${command.length()}\r\n\r\n${command}"
+    def body = command
+    //def body = "Content-Type: application/x-www-form-urlencoded\r\nContent-Length: ${command.length()}\r\n\r\n${command}"
     log.debug "structureCommand: body=\r\n$body"
     return body
 }
@@ -1678,7 +1772,7 @@ def removeIpToHTMLTag(inputText) {
 def poll() {
 
 	log.debug "Executing 'poll'"
-    //refresh()
+    refresh()
 }
 
 /* ******************************************************************************************
@@ -1741,8 +1835,8 @@ def sendCommand (command) {
         'Connection': "keep-alive"
     ]
     hubActionHeaders.put("Upgrade-Insecure-Requests", "1")
-    //hubActionHeaders.put("Content-Type", "application/x-www-form-urlencoded")     
-            
+    hubActionHeaders.put("Content-Type", "application/x-www-form-urlencoded")     
+    hubActionHeaders.put("Content-Length", command.length() )       
     def hubActionPath = "/tgi/status.tgi"
     
     try {
