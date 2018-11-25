@@ -23,7 +23,7 @@ definition(
     author: "tybo27",
     description: "Increases lighting while door is open",
     category: "Convenience",
-    iconUrl: "http://cdn.device-icons.smartthings.com/Health & Wellness/light9-icn.png",
+    iconUrl: "http://cdn.device-icons.smartthings.com/Lighting/light9-icn.png",
     iconX2Url: "http://cdn.device-icons.smartthings.com/Lighting/light9-icn@2x.png",
     iconX3Url: "http://cdn.device-icons.smartthings.com/Lighting/light9-icn@2x.png"
 )
