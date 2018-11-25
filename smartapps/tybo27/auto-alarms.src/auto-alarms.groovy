@@ -33,12 +33,14 @@ definition(
 preferences {   
     section("Person1") {
 		input "presence1", "capability.presenceSensor", multiple: false, title: "Using whose presence"
-        input "alarm1", "device.countingSwitch", multiple: false, title: "Using which Alarm"
+        //input "alarm1", "device.countingSwitch", multiple: false, title: "Using which Alarm"
+        input "alarm1", "capability.switch", multiple: false, title: "Using which Alarm"
         input "mode1", "mode", title: "Mode to transition into when person 1 is present", multiple: false, required: false
 	}
     section("Person2") {
 		input "presence2", "capability.presenceSensor", multiple: false, title: "Using whose presence"
-        input "alarm2", "device.countingSwitch", multiple: false, title: "Using which Alarm"
+        //input "alarm2", "device.countingSwitch", multiple: false, title: "Using which Alarm"
+        input "alarm2", "capability.switch", multiple: false, title: "Using which Alarm"
         input "mode2", "mode", title: "Mode to transition into when person 2 is present", multiple: false, required: false
 	}
     section("General") {
@@ -95,6 +97,7 @@ def initialize() {
 *********************************************************************************************/
 def switchOnHandler (evt) {
 	log.debug "${evt.displayName} has triggered turned on! ${evt.value}"
+    def eventDevice = evt.device
     
     def curJointCount = atomicState.jointCount
     def person1 = presence1.currentPresence //atomicState.presence1
@@ -163,6 +166,8 @@ def switchOnHandler (evt) {
         	}
     	}
    	}
+    log.debug "Turning off evt.device: $eventDevice"
+    eventDevice.off()
 }
 
 /* ******************************************************************************************
